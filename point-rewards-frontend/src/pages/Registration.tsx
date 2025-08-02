@@ -72,7 +72,7 @@ const RegistrationPage = () => {
   return (
     <div>
       {inviter && (
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6 mx-4">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6 mx-4 mt-6">
           <div className="text-center">
             <h3 className="font-medium text-blue-800 mb-1">🎉 您正在通过好友邀请注册</h3>
             <p className="text-sm text-blue-700">
