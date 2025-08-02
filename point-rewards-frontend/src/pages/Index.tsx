@@ -5,6 +5,7 @@ import PrizeCatalog from '@/components/PrizeCatalog';
 import UserProfile from '@/components/UserProfile';
 import BottomNavigation from '@/components/BottomNavigation';
 import RedemptionModal, { RedemptionHistory } from '@/components/RedemptionModal';
+import InviteFriend from '@/components/InviteFriend';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,7 +81,7 @@ const Index = () => {
           navigate('/login');
         }
       } catch (error) {
-        console.error("Failed to parse user data from localStorage", error);
+        // 解析用户数据失败，静默处理避免泄露敏感信息
         navigate('/login');
       } finally {
         setTimeout(() => setIsLoading(false), 500);
@@ -202,6 +203,8 @@ const Index = () => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
       />
+
+      <InviteFriend userId={userData.kuaishouId} />
 
       <RedemptionModal
         prize={selectedPrize}

@@ -70,8 +70,10 @@ const UserProfile = ({ userData, isLoading, onLogout, onAddressUpdate, onRefresh
       );
       
       if (response.code === 200) {
+        // 确保response.data是数组后再进行slice操作
+        const historyData = Array.isArray(response.data) ? response.data : [];
         // 只显示最近3条记录
-        setRecentRedemptions(response.data.slice(0, 3));
+        setRecentRedemptions(historyData.slice(0, 3));
       }
     } catch (error) {
       console.error('获取兑换历史失败:', error);

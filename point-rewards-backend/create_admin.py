@@ -34,8 +34,8 @@ def create_admin_user():
             addresses=[]
         )
         
-        # 设置密码为 'admin123'
-        admin_user.set_password('admin123')
+        # 设置密码为 'Eternalmoon.com1'
+        admin_user.set_password('Eternalmoon.com1')
         
         db.session.add(admin_user)
         db.session.commit()
@@ -44,7 +44,7 @@ def create_admin_user():
         print("=" * 40)
         print("登录信息:")
         print("手机号: admin")
-        print("密码: admin123")
+        print("密码: Eternalmoon.com1")
         print("=" * 40)
 
 if __name__ == '__main__':

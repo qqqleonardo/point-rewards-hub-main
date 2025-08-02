@@ -139,7 +139,7 @@ export default function ImageUpload({ value, onChange, className }: ImageUploadP
                 });
               }}
               onLoad={() => {
-                console.log('预览图片加载成功:', previewUrl);
+                // 图片加载成功
               }}
             />
             <Button

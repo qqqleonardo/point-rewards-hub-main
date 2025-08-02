@@ -13,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { LogIn } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from "@/hooks/use-toast";
 import { apiClient } from "@/lib/apiClient";
 import { API_BASE_URL } from "@/lib/api";
@@ -39,6 +39,8 @@ interface LoginData {
 const Login = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const inviter = searchParams.get('inviter');
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -61,8 +63,18 @@ const Login = () => {
       );
 
       if (response.code === 200) {
-        // 直接使用登录返回的完整用户信息，不再调用/me接口
-        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(response.data));
+        // 创建安全的用户数据副本，移除可能的敏感信息
+        const safeUserData = {
+          id: response.data.id,
+          nickname: response.data.nickname,
+          kuaishouId: response.data.kuaishouId,
+          phone: response.data.phone,
+          points: response.data.points,
+          addresses: response.data.addresses,
+          access_token: response.data.access_token
+        };
+        
+        localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(safeUserData));
         
         toast({
           title: '登录成功',
@@ -135,7 +147,10 @@ const Login = () => {
 
         <div className="mt-6 text-center text-sm">
           <span className="text-muted-foreground">还没有账户？ </span>
-          <Link to="/register" className="text-primary hover:underline">
+          <Link 
+            to={inviter ? `/register?inviter=${inviter}` : "/register"} 
+            className="text-primary hover:underline"
+          >
             立即注册
           </Link>
         </div>

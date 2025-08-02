@@ -1,10 +1,11 @@
 import UserRegistration from "../components/UserRegistration";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { UserData } from "../components/UserRegistration";
 import { apiClient } from "@/lib/apiClient";
 import { API_BASE_URL } from "@/lib/api";
 import { encryptPassword } from "@/lib/encryption";
+import { useEffect, useState } from "react";
 
 interface RegisterResponse {
   id: number;
@@ -17,6 +18,15 @@ interface RegisterResponse {
 const RegistrationPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
+  const [inviter, setInviter] = useState<string | null>(null);
+
+  useEffect(() => {
+    const inviterParam = searchParams.get('inviter');
+    if (inviterParam && inviterParam !== 'default') {
+      setInviter(inviterParam);
+    }
+  }, [searchParams]);
 
   const handleRegistrationComplete = async (data: UserData) => {
     try {
@@ -29,14 +39,20 @@ const RegistrationPage = () => {
           nickname: data.nickname,
           kuaishouId: data.kuaishouId,
           phone: data.phone,
-          password: encryptedPassword, // 发送加密后的密码
+          password: encryptedPassword,
+          inviter: inviter, // 添加邀请者信息
         }
       );
 
       if (response.code === 201) {
+        const successMessage = inviter 
+          ? `欢迎, ${response.data.nickname}! 感谢通过好友邀请注册！请立即登录。`
+          : `欢迎, ${response.data.nickname}! 请立即登录。`;
+          
         toast({
           title: '注册成功',
-          description: `欢迎, ${response.data.nickname}! 请立即登录。`,
+          description: successMessage,
+          duration: 6000,
         });
         navigate('/login');
       }
@@ -54,10 +70,22 @@ const RegistrationPage = () => {
   };
 
   return (
-    <UserRegistration 
-      onRegistrationComplete={handleRegistrationComplete} 
-      onBack={handleBack} 
-    />
+    <div>
+      {inviter && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4 mb-6 mx-4">
+          <div className="text-center">
+            <h3 className="font-medium text-blue-800 mb-1">🎉 您正在通过好友邀请注册</h3>
+            <p className="text-sm text-blue-700">
+              欢迎加入我们的积分兑换平台！
+            </p>
+          </div>
+        </div>
+      )}
+      <UserRegistration 
+        onRegistrationComplete={handleRegistrationComplete} 
+        onBack={handleBack} 
+      />
+    </div>
   );
 };
 

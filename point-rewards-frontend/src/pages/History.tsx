@@ -56,7 +56,9 @@ const HistoryPage = () => {
         const response = await apiClient.get<Redemption[]>(`${API_BASE_URL}/redemptions/history`, userData.access_token);
         // console.log('History API Response:', response);
         if (response.code === 200) {
-          setHistory(response.data);
+          // 确保response.data是数组后再设置历史记录
+          const historyData = Array.isArray(response.data) ? response.data : [];
+          setHistory(historyData);
           // console.log('History data set:', response.data);
         } else {
         console.error('API Error:', response);
