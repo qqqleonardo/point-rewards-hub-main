@@ -2,9 +2,7 @@ import { useState, useRef } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Progress } from '@/components/ui/progress'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { apiClient } from '@/lib/api'
 import { useToast } from '@/hooks/use-toast'
 import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, X, Download } from 'lucide-react'
@@ -40,11 +38,12 @@ export default function TransactionUploadPage() {
       })
     },
     onSuccess: (response) => {
-      setUploadResult(response.data)
+      const typedData = response.data as UploadResult
+      setUploadResult(typedData)
       setShowAllErrors(false) // 重置展开状态
       toast({
         title: '上传成功',
-        description: `成功更新 ${response.data.updated_count} 个用户的积分信息`
+        description: `成功更新 ${typedData.updated_count} 个用户的积分信息`
       })
       // 刷新用户数据
       queryClient.invalidateQueries({ queryKey: ['users'] })

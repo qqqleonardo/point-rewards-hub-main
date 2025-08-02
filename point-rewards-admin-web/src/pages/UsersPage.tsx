@@ -22,7 +22,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { apiClient } from '@/lib/api'
-import { formatDate, formatNumber, formatPoints } from '@/lib/utils'
+import { formatNumber, formatPoints } from '@/lib/utils'
 import { User } from '@/types'
 import { Search, Shield, User as UserIcon, Edit, Save, X, MapPin, Eye } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'

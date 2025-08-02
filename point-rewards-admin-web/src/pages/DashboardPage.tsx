@@ -32,7 +32,7 @@ export default function DashboardPage() {
   const stats = [
     {
       title: '总用户数',
-      value: users.length,
+      value: Array.isArray(users) ? users.length : 0,
       icon: Users,
       description: '注册用户总数',
       color: 'text-blue-600',
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     },
     {
       title: '奖品总数',
-      value: prizes.length,
+      value: Array.isArray(prizes) ? prizes.length : 0,
       icon: Gift,
       description: '可兑换奖品数量',
       color: 'text-green-600',

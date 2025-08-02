@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, X, Image, Loader2 } from 'lucide-react'
+import { Upload, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 
 interface ImageUploadProps {
@@ -128,8 +128,7 @@ export default function ImageUpload({ value, onChange, className }: ImageUploadP
               src={previewUrl}
               alt="预览"
               className="w-32 h-32 object-cover rounded-lg border border-gray-200"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
+              onError={() => {
                 // 图片加载失败时隐藏预览
                 console.error('预览图片加载失败:', previewUrl);
                 toast({

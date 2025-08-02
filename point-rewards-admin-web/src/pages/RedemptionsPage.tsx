@@ -262,7 +262,7 @@ export default function RedemptionsPage() {
                     {getStatusBadge(redemption.status)}
                   </TableCell>
                   <TableCell>
-                    {formatShippingAddress(redemption.shipping_address)}
+                    {formatShippingAddress(redemption.shipping_address || null)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
                     {formatDate(redemption.created_at)}
