@@ -10,14 +10,41 @@ from datetime import datetime
 import os
 
 # 数据库文件路径
-DB_PATH = 'app.db'
+# 尝试在不同位置寻找数据库文件
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+
+# 可能的数据库路径
+possible_paths = [
+    'app.db',  # 当前目录
+    os.path.join(parent_dir, 'app.db'),  # 父目录（项目根目录）
+    os.path.join(current_dir, 'app.db'),  # utils目录
+]
+
+DB_PATH = None
+for path in possible_paths:
+    if os.path.exists(path):
+        DB_PATH = path
+        break
+
+if DB_PATH is None:
+    DB_PATH = 'app.db'  # 默认路径
 
 def connect_db():
     """连接数据库"""
     if not os.path.exists(DB_PATH):
-        print(f"错误: 数据库文件 {DB_PATH} 不存在")
+        print(f"错误: 数据库文件不存在")
+        print(f"尝试过的路径:")
+        for path in possible_paths:
+            status = "✓ 存在" if os.path.exists(path) else "✗ 不存在"
+            print(f"  {path} - {status}")
+        print("\n请确保:")
+        print("1. 在后端项目根目录下运行此脚本")
+        print("2. 数据库已初始化 (运行过部署脚本)")
+        print("3. app.db 文件存在且不为空")
         sys.exit(1)
     
+    print(f"使用数据库: {DB_PATH}")
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row  # 使查询结果可以按列名访问
     return conn

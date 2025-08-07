@@ -55,6 +55,7 @@ show_help() {
     echo ""
     echo "📋 信息命令:"
     echo "  info            - 显示部署信息"
+    echo "  view-data       - 查看数据库数据"
     echo "  help            - 显示此帮助信息"
     echo ""
     echo "示例:"
@@ -136,7 +137,7 @@ create_admin() {
     fi
     
     # 寻找管理员创建脚本
-    admin_scripts=("create_admin.py" "utils/create_admin.py" "create_admin_simple.py")
+    admin_scripts=("utils/create_admin.py" "create_admin.py" "create_admin_simple.py")
     admin_script=""
     
     for script in "${admin_scripts[@]}"; do
@@ -153,7 +154,21 @@ create_admin() {
     fi
     
     log_success "找到管理员脚本: $admin_script"
+    
+    # 设置环境变量
+    export PYTHONPATH="/opt/point-rewards/point-rewards-backend:$PYTHONPATH"
+    
     source venv/bin/activate
+    
+    # 检查必要的依赖
+    if ! python -c "import app" 2>/dev/null; then
+        log_error "无法导入app模块，请检查项目结构"
+        log_info "重新运行部署脚本可能会解决此问题"
+        echo "运行: sudo bash manage.sh deploy"
+        deactivate
+        exit 1
+    fi
+    
     python $admin_script
     deactivate
 }
@@ -317,6 +332,47 @@ troubleshoot() {
     echo "bash manage.sh logs"
 }
 
+# 查看数据库数据
+view_data() {
+    log_info "查看数据库数据..."
+    cd /opt/point-rewards/point-rewards-backend 2>/dev/null || {
+        log_error "后端目录不存在，请先运行部署"
+        echo "运行: sudo bash manage.sh deploy"
+        exit 1
+    }
+    
+    # 检查虚拟环境
+    if [ ! -d "venv" ]; then
+        log_error "虚拟环境不存在，请先运行部署"
+        echo "运行: sudo bash manage.sh deploy"
+        exit 1
+    fi
+    
+    # 检查数据查看脚本
+    if [ ! -f "utils/view_data.py" ]; then
+        log_error "数据查看脚本不存在"
+        exit 1
+    fi
+    
+    source venv/bin/activate
+    
+    if [ -n "$2" ]; then
+        # 传递参数给脚本
+        python utils/view_data.py "$2"
+    else
+        # 显示使用帮助
+        echo "数据库查看工具使用方法:"
+        echo "  bash manage.sh view-data users          # 查看用户表"
+        echo "  bash manage.sh view-data prizes         # 查看奖品表"
+        echo "  bash manage.sh view-data redemptions    # 查看兑换记录表"
+        echo "  bash manage.sh view-data summary        # 显示数据汇总"
+        echo ""
+        python utils/view_data.py
+    fi
+    
+    deactivate
+}
+
 # 显示部署信息
 show_info() {
     echo "=========================================="
@@ -396,6 +452,9 @@ main() {
             ;;
         "info")
             show_info
+            ;;
+        "view-data")
+            view_data "$@"
             ;;
         "help"|"--help"|"-h"|"")
             show_help

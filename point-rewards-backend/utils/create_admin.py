@@ -5,10 +5,20 @@
 """
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from app import db, create_app
-from app.models import User
+# 添加项目根目录到Python路径
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+
+try:
+    from app import db, create_app
+    from app.models import User
+except ImportError as e:
+    print(f"导入错误: {e}")
+    print("请确保在项目根目录下运行此脚本")
+    print(f"当前工作目录: {os.getcwd()}")
+    print(f"项目根目录: {project_root}")
+    sys.exit(1)
 
 def create_admin_user():
     """创建管理员账户"""

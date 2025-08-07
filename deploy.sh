@@ -223,19 +223,21 @@ EOF
 
 # 创建管理员创建脚本函数
 create_admin_script() {
-    log_info "创建管理员账户脚本..."
+    log_info "检查管理员账户脚本..."
     
     # 检查是否已有管理员脚本
-    admin_scripts=("utils/create_admin.py" "create_admin.py")
-    admin_script=""
+    if [ -f "utils/create_admin.py" ]; then
+        log_success "管理员脚本已存在: utils/create_admin.py"
+        # 确保脚本有执行权限
+        chmod +x utils/create_admin.py
+        return
+    fi
     
-    for script in "${admin_scripts[@]}"; do
-        if [ -f "$script" ]; then
-            admin_script="$script"
-            log_success "管理员脚本已存在: $script"
-            return
-        fi
-    done
+    if [ -f "create_admin.py" ]; then
+        log_success "管理员脚本已存在: create_admin.py"
+        chmod +x create_admin.py
+        return
+    fi
     
     # 创建管理员脚本
     log_info "生成管理员创建脚本..."
