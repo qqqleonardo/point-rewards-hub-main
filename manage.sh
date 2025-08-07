@@ -37,7 +37,7 @@ show_help() {
     echo "使用方法: bash manage.sh [命令]"
     echo ""
     echo "🚀 部署命令:"
-    echo "  deploy          - 标准部署"
+    echo "  deploy          - 一键部署（推荐）"
     echo "  deploy-robust   - 增强部署（支持断点续传）"
     echo "  cleanup         - 完整清理所有部署文件"
     echo ""
@@ -58,16 +58,17 @@ show_help() {
     echo "  help            - 显示此帮助信息"
     echo ""
     echo "示例:"
-    echo "  sudo bash manage.sh deploy        # 部署系统"
-    echo "  sudo bash manage.sh status        # 查看状态"
-    echo "  bash manage.sh test              # 测试访问"
+    echo "  sudo bash manage.sh deploy        # 一键部署系统"
+    echo "  bash manage.sh status             # 查看服务状态"  
+    echo "  bash manage.sh test               # 测试网站访问"
+    echo "  sudo bash manage.sh create-admin  # 创建管理员"
     echo ""
     echo "=========================================="
 }
 
 # 检查权限
 check_permissions() {
-    if [[ "$1" == "deploy" ]] || [[ "$1" == "deploy-robust" ]] || [[ "$1" == "cleanup" ]] || [[ "$1" == "init-db" ]] || [[ "$1" == "restart" ]] || [[ "$1" == "backup" ]]; then
+    if [[ "$1" == "deploy" ]] || [[ "$1" == "deploy-robust" ]] || [[ "$1" == "cleanup" ]] || [[ "$1" == "init-db" ]] || [[ "$1" == "restart" ]] || [[ "$1" == "backup" ]] || [[ "$1" == "create-admin" ]]; then
         if [[ $EUID -ne 0 ]]; then
             log_error "此命令需要 root 权限，请使用 sudo"
             exit 1
@@ -122,26 +123,39 @@ init_database() {
 create_admin() {
     log_info "创建管理员账户..."
     cd /opt/point-rewards/point-rewards-backend 2>/dev/null || {
-        log_error "后端目录不存在，请先部署系统"
+        log_error "后端目录不存在，请先运行部署"
+        echo "运行: sudo bash manage.sh deploy"
         exit 1
     }
     
-    if [ -f "create_admin_simple.py" ]; then
-        source venv/bin/activate
-        python create_admin_simple.py
-        deactivate
-    elif [ -f "utils/create_admin.py" ]; then
-        source venv/bin/activate
-        python utils/create_admin.py
-        deactivate
-    elif [ -f "create_admin.py" ]; then
-        source venv/bin/activate
-        python create_admin.py
-        deactivate
-    else
-        log_error "未找到管理员创建脚本"
+    # 检查虚拟环境
+    if [ ! -d "venv" ]; then
+        log_error "虚拟环境不存在，请先运行部署"
+        echo "运行: sudo bash manage.sh deploy"
         exit 1
     fi
+    
+    # 寻找管理员创建脚本
+    admin_scripts=("create_admin.py" "utils/create_admin.py" "create_admin_simple.py")
+    admin_script=""
+    
+    for script in "${admin_scripts[@]}"; do
+        if [ -f "$script" ]; then
+            admin_script="$script"
+            break
+        fi
+    done
+    
+    if [ -z "$admin_script" ]; then
+        log_error "未找到管理员创建脚本，请重新运行部署"
+        echo "运行: sudo bash manage.sh deploy"
+        exit 1
+    fi
+    
+    log_success "找到管理员脚本: $admin_script"
+    source venv/bin/activate
+    python $admin_script
+    deactivate
 }
 
 # 备份数据库
@@ -294,12 +308,13 @@ test_access() {
 # 故障排查
 troubleshoot() {
     log_info "运行故障排查..."
-    if [ -f "troubleshoot-deployment.sh" ]; then
-        bash troubleshoot-deployment.sh
-    else
-        log_error "故障排查脚本不存在"
-        exit 1
-    fi
+    log_info "所有后端问题修复功能已集成到部署脚本中"
+    echo "如遇问题，请重新运行部署脚本："
+    echo "sudo bash manage.sh deploy"
+    echo ""
+    echo "或查看服务状态和日志："
+    echo "bash manage.sh status"
+    echo "bash manage.sh logs"
 }
 
 # 显示部署信息

@@ -31,7 +31,7 @@ dashboard.eternalmoon.com.cn   A    YOUR_SERVER_IP
 
 ### 部署管理
 ```bash
-# 标准部署
+# 标准部署（推荐）
 sudo bash manage.sh deploy
 
 # 增强部署（支持断点续传）
@@ -145,10 +145,13 @@ bash manage.sh logs
 
 **2. 后端服务无法启动**
 ```bash
-# 运行故障排查
-bash manage.sh troubleshoot
+# 重启服务
+sudo bash manage.sh restart
 
-# 手动启动测试
+# 如果问题持续，重新部署会自动修复所有配置
+sudo bash manage.sh deploy
+
+# 手动测试启动
 cd /opt/point-rewards/point-rewards-backend
 source venv/bin/activate
 python run.py

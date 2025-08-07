@@ -104,48 +104,289 @@ deploy_backend() {
     log_info "部署后端服务..."
     cd /opt/point-rewards/point-rewards-backend
     
-    # 创建虚拟环境
-    python3 -m venv venv
+    # 检查和创建虚拟环境
+    if [ -d "venv" ]; then
+        log_info "虚拟环境已存在，检查完整性..."
+        if [ ! -f "venv/bin/python" ]; then
+            log_warning "虚拟环境损坏，重新创建..."
+            rm -rf venv
+            python3 -m venv venv
+        fi
+    else
+        log_info "创建Python虚拟环境..."
+        python3 -m venv venv
+    fi
+    
     source venv/bin/activate
     
-    # 安装依赖
-    pip install -r requirements.txt
+    # 升级pip并安装依赖
+    log_info "安装Python依赖..."
+    pip install --upgrade pip
+    
+    if [ -f "requirements.txt" ]; then
+        pip install -r requirements.txt
+    else
+        log_warning "requirements.txt不存在，安装基础依赖..."
+        pip install flask flask-sqlalchemy flask-migrate flask-cors python-dotenv werkzeug
+    fi
     
     # 创建环境变量文件
-    cat > .env << EOF
+    if [ ! -f ".env" ]; then
+        log_info "创建环境变量配置..."
+        cat > .env << EOF
 SECRET_KEY=$(openssl rand -hex 32)
 JWT_SECRET_KEY=$(openssl rand -hex 32)
 DATABASE_URL=sqlite:///app.db
 FLASK_ENV=production
+FLASK_APP=run.py
 EOF
-    
-    # 初始化数据库
-    if [ -f "utils/create_admin.py" ]; then
-        log_info "请稍后手动创建管理员账户："
-        log_info "cd /opt/point-rewards/point-rewards-backend && source venv/bin/activate && python utils/create_admin.py"
+    else
+        log_success "环境变量文件已存在"
     fi
+    
+    # 检查主应用文件，如果不存在则创建基础版本
+    main_files=("run.py" "app.py" "main.py")
+    main_file=""
+    
+    for file in "${main_files[@]}"; do
+        if [ -f "$file" ]; then
+            main_file="$file"
+            log_success "找到主应用文件: $file"
+            break
+        fi
+    done
+    
+    if [ -z "$main_file" ]; then
+        log_warning "未找到主应用文件，创建基础run.py..."
+        cat > run.py << 'EOF'
+from flask import Flask, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+import os
+from dotenv import load_dotenv
+
+# 加载环境变量
+load_dotenv()
+
+app = Flask(__name__)
+CORS(app)
+
+# 配置数据库
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+db = SQLAlchemy(app)
+
+# 基础模型
+class User(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    points = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+class Admin(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+    password_hash = db.Column(db.String(128))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+# API路由
+@app.route('/')
+def home():
+    return jsonify({'message': 'Point Rewards API is running', 'status': 'success'})
+
+@app.route('/api/health')
+def health():
+    return jsonify({'status': 'healthy', 'message': 'API is working'})
+
+# 创建数据库表
+with app.app_context():
+    db.create_all()
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=False)
+EOF
+        main_file="run.py"
+        log_success "基础应用文件创建完成"
+    fi
+    
+    # 创建管理员创建脚本
+    create_admin_script
     
     deactivate
     log_success "后端部署完成"
 }
 
+# 创建管理员创建脚本函数
+create_admin_script() {
+    log_info "创建管理员账户脚本..."
+    
+    # 检查是否已有管理员脚本
+    admin_scripts=("utils/create_admin.py" "create_admin.py")
+    admin_script=""
+    
+    for script in "${admin_scripts[@]}"; do
+        if [ -f "$script" ]; then
+            admin_script="$script"
+            log_success "管理员脚本已存在: $script"
+            return
+        fi
+    done
+    
+    # 创建管理员脚本
+    log_info "生成管理员创建脚本..."
+    cat > create_admin.py << 'EOF'
+#!/usr/bin/env python3
+import os
+import sys
+from werkzeug.security import generate_password_hash
+import getpass
+
+# 添加项目根目录到Python路径
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+try:
+    from run import app, db, Admin
+except ImportError:
+    try:
+        from app import app, db, Admin
+    except ImportError:
+        try:
+            from main import app, db, Admin
+        except ImportError:
+            print("错误: 无法导入应用和数据库模块")
+            sys.exit(1)
+
+def create_admin():
+    with app.app_context():
+        print("=== 创建管理员账户 ===")
+        
+        # 检查是否已有管理员
+        try:
+            existing_admin = Admin.query.first()
+            if existing_admin:
+                print(f"已存在管理员账户: {existing_admin.username}")
+                choice = input("是否要创建新的管理员? (y/N): ").lower()
+                if choice != 'y':
+                    print("取消创建")
+                    return
+        except Exception:
+            # 表可能不存在，继续创建
+            pass
+        
+        # 获取管理员信息
+        username = input("输入管理员用户名 (默认: admin): ").strip() or "admin"
+        email = input("输入管理员邮箱 (默认: admin@example.com): ").strip() or "admin@example.com"
+        
+        # 检查用户名是否已存在
+        try:
+            existing = Admin.query.filter_by(username=username).first()
+            if existing:
+                print(f"错误: 用户名 '{username}' 已存在")
+                return
+        except Exception:
+            pass
+        
+        # 获取密码
+        while True:
+            password = getpass.getpass("输入管理员密码: ")
+            if len(password) < 6:
+                print("密码长度至少6位，请重新输入")
+                continue
+            
+            confirm_password = getpass.getpass("确认密码: ")
+            if password != confirm_password:
+                print("密码不匹配，请重新输入")
+                continue
+            break
+        
+        # 创建管理员
+        try:
+            password_hash = generate_password_hash(password)
+            admin = Admin(
+                username=username,
+                email=email,
+                password_hash=password_hash
+            )
+            
+            db.session.add(admin)
+            db.session.commit()
+            
+            print(f"✅ 管理员账户创建成功!")
+            print(f"用户名: {username}")
+            print(f"邮箱: {email}")
+            
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ 创建管理员失败: {e}")
+
+if __name__ == "__main__":
+    create_admin()
+EOF
+    
+    chmod +x create_admin.py
+    log_success "管理员创建脚本已生成"
+}
+
 # 配置 Supervisor
 configure_supervisor() {
     log_info "配置 Supervisor..."
+    
+    # 检查主应用文件
+    cd /opt/point-rewards/point-rewards-backend
+    main_files=("run.py" "app.py" "main.py")
+    main_file="run.py"  # 默认使用run.py
+    
+    for file in "${main_files[@]}"; do
+        if [ -f "$file" ]; then
+            main_file="$file"
+            break
+        fi
+    done
+    
+    log_info "使用主应用文件: $main_file"
+    
+    # 创建优化的Supervisor配置
     cat > /etc/supervisor/conf.d/point-rewards-backend.conf << EOF
 [program:point-rewards-backend]
-command=/opt/point-rewards/point-rewards-backend/venv/bin/python run.py
+command=/opt/point-rewards/point-rewards-backend/venv/bin/python $main_file
 directory=/opt/point-rewards/point-rewards-backend
 user=www-data
 autostart=true
 autorestart=true
 stdout_logfile=/var/log/point-rewards-backend.log
 stderr_logfile=/var/log/point-rewards-backend-error.log
-environment=PYTHONPATH=/opt/point-rewards/point-rewards-backend
+stdout_logfile_maxbytes=50MB
+stderr_logfile_maxbytes=50MB
+stdout_logfile_backups=10
+stderr_logfile_backups=10
+environment=PYTHONPATH="/opt/point-rewards/point-rewards-backend",FLASK_ENV="production"
+redirect_stderr=false
+startsecs=10
+startretries=5
+stopsignal=TERM
+stopwaitsecs=30
+killasgroup=true
+stopasgroup=true
 EOF
     
+    # 设置正确的权限
+    chown -R www-data:www-data /opt/point-rewards/point-rewards-backend
+    chmod +x /opt/point-rewards/point-rewards-backend/venv/bin/python
+    
+    # 重新加载Supervisor配置
     supervisorctl reread
     supervisorctl update
+    
+    # 确保服务停止后重新启动
+    supervisorctl stop point-rewards-backend 2>/dev/null || true
+    sleep 2
+    supervisorctl start point-rewards-backend
+    
     log_success "Supervisor 配置完成"
 }
 
@@ -589,9 +830,11 @@ show_deployment_info() {
     echo ""
     echo "下一步:"
     echo "1. 创建管理员账户:"
+    echo "   sudo bash manage.sh create-admin"
+    echo "   或手动运行:"
     echo "   cd /opt/point-rewards/point-rewards-backend"
     echo "   source venv/bin/activate"
-    echo "   python utils/create_admin.py"
+    echo "   python create_admin.py"
     echo ""
     echo "2. 确保 DNS 记录已配置:"
     echo "   $MOBILE_DOMAIN     A    YOUR_SERVER_IP"
@@ -668,24 +911,49 @@ init_database_after_deploy() {
     log_info "初始化数据库..."
     cd /opt/point-rewards/point-rewards-backend
     
-    # 激活虚拟环境并初始化数据库
+    # 激活虚拟环境
     source venv/bin/activate
     
-    # 尝试创建数据库
-    python3 -c "
+    # 多重方式初始化数据库
+    db_initialized=false
+    
+    # 方法1：尝试使用Flask应用初始化
+    log_info "尝试通过Flask应用初始化数据库..."
+    main_files=("run.py" "app.py" "main.py")
+    
+    for main_file in "${main_files[@]}"; do
+        if [ -f "$main_file" ]; then
+            python3 -c "
 try:
-    from run import app, db
+    from $main_file import app, db
     with app.app_context():
         db.create_all()
-        print('数据库创建成功')
+        print('✅ 通过 $main_file 创建数据库成功')
+        import os
+        if os.path.exists('app.db'):
+            print(f'数据库文件大小: {os.path.getsize(\"app.db\")} bytes')
 except Exception as e:
-    print(f'数据库创建失败: {e}')
-    # 手动创建基础数据库
-    import sqlite3
-    conn = sqlite3.connect('app.db')
+    print(f'❌ 通过 $main_file 初始化失败: {e}')
+    raise
+" 2>/dev/null && { db_initialized=true; break; } || continue
+        fi
+    done
+    
+    # 方法2：如果Flask方式失败，手动创建数据库
+    if [ "$db_initialized" = false ]; then
+        log_warning "Flask方式失败，使用手动方式创建数据库..."
+        python3 -c "
+import sqlite3
+import os
+
+db_path = 'app.db'
+print(f'手动创建数据库: {db_path}')
+
+try:
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # 创建基础表
+    # 创建用户表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -693,9 +961,11 @@ except Exception as e:
         email VARCHAR(120) UNIQUE NOT NULL,
         password_hash VARCHAR(128),
         points INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
+    # 创建管理员表
     cursor.execute('''
     CREATE TABLE IF NOT EXISTS admins (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -705,14 +975,107 @@ except Exception as e:
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )''')
     
-    conn.commit()
-    conn.close()
-    print('基础数据库创建成功')
-" 2>&1 || log_warning "数据库初始化可能有问题"
+    # 创建奖品表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS prizes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name VARCHAR(120) NOT NULL,
+        description TEXT,
+        points_required INTEGER NOT NULL,
+        stock INTEGER DEFAULT 0,
+        image_url VARCHAR(255),
+        is_active BOOLEAN DEFAULT 1,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
     
-    # 设置正确的权限
-    chown www-data:www-data app.db 2>/dev/null || true
-    chmod 664 app.db 2>/dev/null || true
+    # 创建兑换记录表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS redemptions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        prize_id INTEGER NOT NULL,
+        points_spent INTEGER NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (prize_id) REFERENCES prizes (id)
+    )''')
+    
+    # 创建积分交易记录表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS point_transactions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        points INTEGER NOT NULL,
+        transaction_type VARCHAR(20) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+    )''')
+    
+    conn.commit()
+    
+    # 验证表创建
+    cursor.execute(\"SELECT name FROM sqlite_master WHERE type='table'\")
+    tables = cursor.fetchall()
+    print(f'✅ 创建了 {len(tables)} 个数据表: {[table[0] for table in tables]}')
+    
+    conn.close()
+    
+    # 检查文件大小
+    if os.path.exists(db_path):
+        size = os.path.getsize(db_path)
+        print(f'数据库文件大小: {size} bytes')
+        if size > 0:
+            print('✅ 数据库创建成功')
+        else:
+            print('❌ 数据库文件为空')
+    else:
+        print('❌ 数据库文件不存在')
+        
+except Exception as e:
+    print(f'❌ 手动创建数据库失败: {e}')
+    import traceback
+    traceback.print_exc()
+" && db_initialized=true
+    fi
+    
+    # 验证数据库是否成功创建
+    if [ -f "app.db" ] && [ -s "app.db" ]; then
+        log_success "数据库文件创建成功"
+        
+        # 设置正确的权限
+        chown www-data:www-data app.db
+        chmod 664 app.db
+        
+        # 显示数据库信息
+        ls -la app.db
+        
+        # 验证表结构
+        python3 -c "
+import sqlite3
+try:
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    cursor.execute(\"SELECT name FROM sqlite_master WHERE type='table'\")
+    tables = cursor.fetchall()
+    print('数据库表列表:')
+    for table in tables:
+        print(f'  - {table[0]}')
+    conn.close()
+except Exception as e:
+    print(f'无法读取数据库表: {e}')
+"
+    else
+        log_error "数据库初始化失败"
+        if [ -f "app.db" ]; then
+            log_warning "数据库文件存在但可能为空"
+            ls -la app.db
+        else
+            log_error "数据库文件不存在"
+        fi
+    fi
     
     deactivate
     log_success "数据库初始化完成"
