@@ -652,10 +652,70 @@ main() {
     setup_firewall
     start_services
     setup_backup
+    
+    # 初始化数据库
+    log_info "初始化数据库..."
+    init_database_after_deploy
+    
     verify_deployment
     show_deployment_info
     
     log_success "部署脚本执行完成！"
+}
+
+# 数据库初始化函数
+init_database_after_deploy() {
+    log_info "初始化数据库..."
+    cd /opt/point-rewards/point-rewards-backend
+    
+    # 激活虚拟环境并初始化数据库
+    source venv/bin/activate
+    
+    # 尝试创建数据库
+    python3 -c "
+try:
+    from run import app, db
+    with app.app_context():
+        db.create_all()
+        print('数据库创建成功')
+except Exception as e:
+    print(f'数据库创建失败: {e}')
+    # 手动创建基础数据库
+    import sqlite3
+    conn = sqlite3.connect('app.db')
+    cursor = conn.cursor()
+    
+    # 创建基础表
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username VARCHAR(80) UNIQUE NOT NULL,
+        email VARCHAR(120) UNIQUE NOT NULL,
+        password_hash VARCHAR(128),
+        points INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS admins (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username VARCHAR(80) UNIQUE NOT NULL,
+        email VARCHAR(120) UNIQUE NOT NULL,
+        password_hash VARCHAR(128),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )''')
+    
+    conn.commit()
+    conn.close()
+    print('基础数据库创建成功')
+" 2>&1 || log_warning "数据库初始化可能有问题"
+    
+    # 设置正确的权限
+    chown www-data:www-data app.db 2>/dev/null || true
+    chmod 664 app.db 2>/dev/null || true
+    
+    deactivate
+    log_success "数据库初始化完成"
 }
 
 # 执行主函数
