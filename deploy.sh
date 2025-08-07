@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 积分兑换平台快速部署脚本 - eternalmoon.tech
+# 积分兑换平台快速部署脚本 - eternalmoon.com.cn
 # 使用方法: sudo bash deploy.sh
 
 set -e  # 遇到错误立即退出
@@ -13,9 +13,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 域名配置
-MOBILE_DOMAIN="points.eternalmoon.tech"
-ADMIN_DOMAIN="dashboard.eternalmoon.tech"
-BASE_DOMAIN="eternalmoon.tech"
+MOBILE_DOMAIN="points.eternalmoon.com.cn"
+ADMIN_DOMAIN="dashboard.eternalmoon.com.cn"
+BASE_DOMAIN="eternalmoon.com.cn"
 
 # 日志函数
 log_info() {
@@ -563,7 +563,7 @@ verify_deployment() {
 show_deployment_info() {
     echo ""
     echo "=========================================="
-    log_success "eternalmoon.tech 积分兑换平台部署完成！"
+    log_success "eternalmoon.com.cn 积分兑换平台部署完成！"
     echo "=========================================="
     echo ""
     echo "访问地址:"
@@ -610,7 +610,7 @@ show_deployment_info() {
 # 主函数
 main() {
     echo "=========================================="
-    echo "   eternalmoon.tech 积分兑换平台自动部署"
+    echo "   eternalmoon.com.cn 积分兑换平台自动部署"
     echo "=========================================="
     echo ""
     echo "将部署以下域名:"

@@ -1,4 +1,4 @@
-# eternalmoon.tech 积分兑换平台部署检查清单
+# eternalmoon.com.cn 积分兑换平台部署检查清单
 
 ## 部署前检查 ✅
 
@@ -12,14 +12,14 @@
 - [ ] 服务器可以访问互联网
 
 ### 域名和 DNS
-- [ ] eternalmoon.tech 域名已购买并可以管理 DNS 记录
+- [ ] eternalmoon.com.cn 域名已购买并可以管理 DNS 记录
 - [ ] A 记录已配置:
-  - [ ] points.eternalmoon.tech → 服务器 IP
-  - [ ] dashboard.eternalmoon.tech → 服务器 IP
+  - [ ] points.eternalmoon.com.cn → 服务器 IP
+  - [ ] dashboard.eternalmoon.com.cn → 服务器 IP
 - [ ] DNS 解析已生效 (可用 nslookup 或 dig 检查)
   ```bash
-  nslookup points.eternalmoon.tech
-  nslookup dashboard.eternalmoon.tech
+  nslookup points.eternalmoon.com.cn
+  nslookup dashboard.eternalmoon.com.cn
   ```
 
 ### 本地文件准备
@@ -79,8 +79,8 @@ sudo bash deploy.sh
 - [ ] 移动端前端构建成功: `point-rewards-frontend/dist/`
 - [ ] 管理后台构建成功: `point-rewards-admin-web/dist/`
 - [ ] 构建文件复制到 Web 目录: 
-  - [ ] `/var/www/points.eternalmoon.tech/`
-  - [ ] `/var/www/dashboard.eternalmoon.tech/`
+  - [ ] `/var/www/points.eternalmoon.com.cn/`
+  - [ ] `/var/www/dashboard.eternalmoon.com.cn/`
 - [ ] 文件权限设置正确: `www-data:www-data`
 
 ### SSL 证书检查
@@ -107,11 +107,11 @@ sudo bash deploy.sh
 ## 部署后验证 ✅
 
 ### 基本功能测试
-- [ ] 移动端首页可以访问: `https://points.eternalmoon.tech`
-- [ ] 管理后台可以访问: `https://dashboard.eternalmoon.tech`
+- [ ] 移动端首页可以访问: `https://points.eternalmoon.com.cn`
+- [ ] 管理后台可以访问: `https://dashboard.eternalmoon.com.cn`
 - [ ] API 健康检查: 
-  - [ ] `curl https://points.eternalmoon.tech/api/health`
-  - [ ] `curl https://dashboard.eternalmoon.tech/api/health`
+  - [ ] `curl https://points.eternalmoon.com.cn/api/health`
+  - [ ] `curl https://dashboard.eternalmoon.com.cn/api/health`
 - [ ] HTTPS 证书有效且浏览器显示安全图标
 - [ ] HTTP 自动重定向到 HTTPS
 

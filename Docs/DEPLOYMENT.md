@@ -4,15 +4,15 @@
 
 本项目包含三个主要组件：
 - **point-rewards-backend**: Flask API 后端服务
-- **point-rewards-frontend**: React 移动端用户界面 (points.eternalmoon.tech)
-- **point-rewards-admin-web**: React 管理后台界面 (dashboard.eternalmoon.tech)
+- **point-rewards-frontend**: React 移动端用户界面 (points.eternalmoon.com.cn)
+- **point-rewards-admin-web**: React 管理后台界面 (dashboard.eternalmoon.com.cn)
 
 ## 域名配置
 
 本部署使用以下域名结构：
-- **主域名**: eternalmoon.tech
-- **移动端**: points.eternalmoon.tech
-- **管理后台**: dashboard.eternalmoon.tech
+- **主域名**: eternalmoon.com.cn
+- **移动端**: points.eternalmoon.com.cn
+- **管理后台**: dashboard.eternalmoon.com.cn
 - **API 服务**: 通过各自域名的 /api 路径访问
 
 ## 服务器环境要求
@@ -35,14 +35,14 @@
 
 在域名管理面板中配置以下 A 记录：
 ```
-points.eternalmoon.tech     A    YOUR_SERVER_IP
-dashboard.eternalmoon.tech  A    YOUR_SERVER_IP
+points.eternalmoon.com.cn     A    YOUR_SERVER_IP
+dashboard.eternalmoon.com.cn  A    YOUR_SERVER_IP
 ```
 
 可选的额外记录：
 ```
-eternalmoon.tech           A    YOUR_SERVER_IP
-www.eternalmoon.tech       A    YOUR_SERVER_IP
+eternalmoon.com.cn           A    YOUR_SERVER_IP
+www.eternalmoon.com.cn       A    YOUR_SERVER_IP
 ```
 
 ## 部署前准备
@@ -184,20 +184,20 @@ npm run build
 ### 3. 复制构建文件到 Web 目录
 ```bash
 # 创建 web 目录
-sudo mkdir -p /var/www/points.eternalmoon.tech
-sudo mkdir -p /var/www/dashboard.eternalmoon.tech
+sudo mkdir -p /var/www/points.eternalmoon.com.cn
+sudo mkdir -p /var/www/dashboard.eternalmoon.com.cn
 
 # 复制移动端构建文件
-sudo cp -r /opt/point-rewards/point-rewards-frontend/dist/* /var/www/points.eternalmoon.tech/
+sudo cp -r /opt/point-rewards/point-rewards-frontend/dist/* /var/www/points.eternalmoon.com.cn/
 
 # 复制管理后台构建文件
-sudo cp -r /opt/point-rewards/point-rewards-admin-web/dist/* /var/www/dashboard.eternalmoon.tech/
+sudo cp -r /opt/point-rewards/point-rewards-admin-web/dist/* /var/www/dashboard.eternalmoon.com.cn/
 
 # 设置权限
-sudo chown -R www-data:www-data /var/www/points.eternalmoon.tech
-sudo chown -R www-data:www-data /var/www/dashboard.eternalmoon.tech
-sudo chmod -R 755 /var/www/points.eternalmoon.tech
-sudo chmod -R 755 /var/www/dashboard.eternalmoon.tech
+sudo chown -R www-data:www-data /var/www/points.eternalmoon.com.cn
+sudo chown -R www-data:www-data /var/www/dashboard.eternalmoon.com.cn
+sudo chmod -R 755 /var/www/points.eternalmoon.com.cn
+sudo chmod -R 755 /var/www/dashboard.eternalmoon.com.cn
 ```
 
 ## Nginx 配置
@@ -210,7 +210,7 @@ sudo apt install certbot python3-certbot-nginx  # Ubuntu/Debian
 sudo yum install certbot python3-certbot-nginx  # CentOS/RHEL
 
 # 获取证书 (为两个二级域名)
-sudo certbot certonly --nginx -d points.eternalmoon.tech -d dashboard.eternalmoon.tech
+sudo certbot certonly --nginx -d points.eternalmoon.com.cn -d dashboard.eternalmoon.com.cn
 ```
 
 ### 2. 配置 Nginx

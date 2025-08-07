@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 积分兑换平台增强部署脚本 - eternalmoon.tech
+# 积分兑换平台增强部署脚本 - eternalmoon.com.cn
 # 支持断点续传和幂等性操作
 # 使用方法: sudo bash deploy-robust.sh [--resume] [--force]
 
@@ -14,9 +14,9 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 域名配置
-MOBILE_DOMAIN="points.eternalmoon.tech"
-ADMIN_DOMAIN="dashboard.eternalmoon.tech"
-BASE_DOMAIN="eternalmoon.tech"
+MOBILE_DOMAIN="points.eternalmoon.com.cn"
+ADMIN_DOMAIN="dashboard.eternalmoon.com.cn"
+BASE_DOMAIN="eternalmoon.com.cn"
 
 # 状态文件路径
 STATE_DIR="/opt/point-rewards-deploy"
@@ -820,7 +820,7 @@ verify_deployment() {
 show_deployment_info() {
     echo ""
     echo "=========================================="
-    log_success "eternalmoon.tech 积分兑换平台部署完成！"
+    log_success "eternalmoon.com.cn 积分兑换平台部署完成！"
     echo "=========================================="
     echo ""
     echo "访问地址:"
@@ -871,7 +871,7 @@ show_deployment_info() {
 # 主函数
 main() {
     echo "=========================================="
-    echo "   eternalmoon.tech 积分兑换平台增强部署"
+    echo "   eternalmoon.com.cn 积分兑换平台增强部署"
     echo "=========================================="
     echo ""
     echo "将部署以下域名:"
