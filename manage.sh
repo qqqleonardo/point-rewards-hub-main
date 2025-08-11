@@ -43,6 +43,7 @@ show_help() {
     echo ""
     echo "🔧 维护命令:"
     echo "  init-db         - 初始化数据库"
+    echo "  fix-db          - 修复数据库问题（自动创建表和管理员）"
     echo "  create-admin    - 创建管理员账户"
     echo "  backup          - 备份数据库"
     echo "  restart         - 重启所有服务"
@@ -63,13 +64,14 @@ show_help() {
     echo "  bash manage.sh status             # 查看服务状态"  
     echo "  bash manage.sh test               # 测试网站访问"
     echo "  sudo bash manage.sh create-admin  # 创建管理员"
+    echo "  sudo bash manage.sh fix-db       # 修复数据库问题"
     echo ""
     echo "=========================================="
 }
 
 # 检查权限
 check_permissions() {
-    if [[ "$1" == "deploy" ]] || [[ "$1" == "deploy-robust" ]] || [[ "$1" == "cleanup" ]] || [[ "$1" == "init-db" ]] || [[ "$1" == "restart" ]] || [[ "$1" == "backup" ]] || [[ "$1" == "create-admin" ]]; then
+    if [[ "$1" == "deploy" ]] || [[ "$1" == "deploy-robust" ]] || [[ "$1" == "cleanup" ]] || [[ "$1" == "init-db" ]] || [[ "$1" == "fix-db" ]] || [[ "$1" == "restart" ]] || [[ "$1" == "backup" ]] || [[ "$1" == "create-admin" ]]; then
         if [[ $EUID -ne 0 ]]; then
             log_error "此命令需要 root 权限，请使用 sudo"
             exit 1
@@ -136,8 +138,8 @@ create_admin() {
         exit 1
     fi
     
-    # 寻找管理员创建脚本
-    admin_scripts=("utils/create_admin.py" "create_admin.py" "create_admin_simple.py")
+    # 优先使用增强版管理员创建脚本
+    admin_scripts=("utils/create_admin_enhanced.py" "utils/create_admin.py" "create_admin.py" "create_admin_simple.py")
     admin_script=""
     
     for script in "${admin_scripts[@]}"; do
@@ -148,28 +150,171 @@ create_admin() {
     done
     
     if [ -z "$admin_script" ]; then
-        log_error "未找到管理员创建脚本，请重新运行部署"
-        echo "运行: sudo bash manage.sh deploy"
-        exit 1
+        log_error "未找到管理员创建脚本"
+        log_info "正在创建增强版管理员脚本..."
+        
+        # 创建简单的管理员创建脚本作为备选
+        cat > create_admin_simple.py << 'EOF'
+#!/usr/bin/env python3
+import sys, os
+sys.path.insert(0, '/opt/point-rewards/point-rewards-backend')
+
+try:
+    from app import create_app, db
+    from app.models import User
+    
+    app = create_app()
+    with app.app_context():
+        # 创建表（如果不存在）
+        db.create_all()
+        
+        # 检查管理员是否存在
+        admin = User.query.filter_by(phone='admin').first()
+        if admin:
+            print("管理员已存在")
+        else:
+            # 创建管理员
+            admin = User(
+                nickname='超级管理员',
+                kuaishouId='admin001', 
+                phone='admin',
+                points=1000,
+                is_admin=True,
+                addresses=[]
+            )
+            admin.set_password('Eternalmoon.com1')
+            db.session.add(admin)
+            db.session.commit()
+            print("管理员创建成功")
+            print("登录: admin / Eternalmoon.com1")
+            
+except Exception as e:
+    print(f"错误: {e}")
+    sys.exit(1)
+EOF
+        admin_script="create_admin_simple.py"
     fi
     
-    log_success "找到管理员脚本: $admin_script"
+    log_success "使用管理员脚本: $admin_script"
     
     # 设置环境变量
     export PYTHONPATH="/opt/point-rewards/point-rewards-backend:$PYTHONPATH"
     
     source venv/bin/activate
     
-    # 检查必要的依赖
-    if ! python -c "import app" 2>/dev/null; then
-        log_error "无法导入app模块，请检查项目结构"
-        log_info "重新运行部署脚本可能会解决此问题"
+    # 执行管理员创建脚本
+    if python "$admin_script"; then
+        log_success "管理员账户处理完成"
+    else
+        log_error "管理员账户创建失败"
+        log_info "尝试手动初始化数据库..."
+        
+        # 尝试手动创建数据库表
+        python -c "
+from app import create_app, db
+from app.models import User
+
+app = create_app()
+with app.app_context():
+    try:
+        db.create_all()
+        print('数据库表创建成功')
+        
+        admin = User.query.filter_by(phone='admin').first()
+        if not admin:
+            admin = User(
+                nickname='超级管理员',
+                kuaishouId='admin001',
+                phone='admin', 
+                points=1000,
+                is_admin=True,
+                addresses=[]
+            )
+            admin.set_password('Eternalmoon.com1')
+            db.session.add(admin)
+            db.session.commit()
+            print('管理员创建成功: admin / Eternalmoon.com1')
+        else:
+            print('管理员已存在: admin / Eternalmoon.com1')
+    except Exception as e:
+        print(f'错误: {e}')
+        raise
+    
+    deactivate
+}
+
+# 修复数据库问题
+fix_database() {
+    log_info "修复数据库问题..."
+    cd /opt/point-rewards/point-rewards-backend 2>/dev/null || {
+        log_error "后端目录不存在，请先运行部署"
         echo "运行: sudo bash manage.sh deploy"
-        deactivate
+        exit 1
+    }
+    
+    # 检查虚拟环境
+    if [ ! -d "venv" ]; then
+        log_error "虚拟环境不存在，请先运行部署"
+        echo "运行: sudo bash manage.sh deploy"
         exit 1
     fi
     
-    python $admin_script
+    # 备份现有数据库
+    if [ -f "app.db" ]; then
+        backup_name="app_backup_$(date +%Y%m%d_%H%M%S).db"
+        cp app.db "$backup_name"
+        log_success "数据库已备份为: $backup_name"
+    fi
+    
+    # 设置环境变量
+    export PYTHONPATH="/opt/point-rewards/point-rewards-backend:$PYTHONPATH"
+    
+    source venv/bin/activate
+    
+    # 强制重新创建数据库表
+    python -c "
+from app import create_app, db
+from app.models import User, Prize, Redemption
+
+app = create_app()
+with app.app_context():
+    try:
+        # 删除所有表并重新创建
+        db.drop_all()
+        db.create_all()
+        print('✅ 数据库表重新创建成功')
+        
+        # 创建管理员账户
+        admin = User.query.filter_by(phone='admin').first()
+        if not admin:
+            admin = User(
+                nickname='超级管理员',
+                kuaishouId='admin001',
+                phone='admin',
+                points=1000,
+                is_admin=True,
+                addresses=[]
+            )
+            admin.set_password('Eternalmoon.com1')
+            db.session.add(admin)
+            db.session.commit()
+            print('✅ 管理员账户创建成功')
+            print('登录信息: admin / Eternalmoon.com1')
+        else:
+            print('✅ 管理员账户已存在')
+            
+    except Exception as e:
+        print(f'❌ 修复失败: {e}')
+        raise
+"
+    
+    if [ $? -eq 0 ]; then
+        log_success "数据库修复完成！"
+        echo "管理员登录信息: admin / Eternalmoon.com1"
+    else
+        log_error "数据库修复失败"
+    fi
+    
     deactivate
 }
 
@@ -425,6 +570,10 @@ main() {
         "init-db")
             check_permissions "$1"
             init_database
+            ;;
+        "fix-db")
+            check_permissions "$1"
+            fix_database
             ;;
         "create-admin")
             check_permissions "$1"
