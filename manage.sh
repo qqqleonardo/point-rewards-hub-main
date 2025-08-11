@@ -41,14 +41,14 @@ show_help() {
     echo "  deploy-robust   - 增强部署（支持断点续传）"
     echo "  cleanup         - 完整清理所有部署文件"
     echo ""
-    echo "🔧 维护命令:"
+    echo "维护命令:"
     echo "  init-db         - 初始化数据库"
     echo "  fix-db          - 修复数据库问题（自动创建表和管理员）"
     echo "  create-admin    - 创建管理员账户"
     echo "  backup          - 备份数据库"
     echo "  restart         - 重启所有服务"
     echo ""
-    echo "🔍 诊断命令:"
+    echo "诊断命令:"
     echo "  status          - 查看服务状态"
     echo "  logs            - 查看服务日志"
     echo "  test            - 测试网站访问"
@@ -272,7 +272,7 @@ fix_database() {
     source venv/bin/activate
     
     # 强制重新创建数据库表
-    python -c "
+    python << 'EOF'
 from app import create_app, db
 from app.models import User, Prize, Redemption
 
@@ -306,7 +306,7 @@ with app.app_context():
     except Exception as e:
         print(f'❌ 修复失败: {e}')
         raise
-"
+EOF
     
     if [ $? -eq 0 ]; then
         log_success "数据库修复完成！"
@@ -367,7 +367,7 @@ show_status() {
     echo "=========================================="
     
     # Nginx状态
-    echo "🌐 Nginx 状态:"
+    echo "Nginx 状态:"
     if systemctl is-active --quiet nginx; then
         echo "  ✓ 运行中"
     else
@@ -376,7 +376,7 @@ show_status() {
     
     # 后端服务状态
     echo ""
-    echo "🔧 后端服务状态:"
+    echo "后端服务状态:"
     if supervisorctl status point-rewards-backend >/dev/null 2>&1; then
         supervisorctl status point-rewards-backend
     else
@@ -392,7 +392,7 @@ show_status() {
     
     # 磁盘使用
     echo ""
-    echo "💾 磁盘使用:"
+    echo "磁盘使用:"
     df -h | grep -E "/$|/opt|/var" || df -h | head -2
 }
 
@@ -402,7 +402,7 @@ show_logs() {
     echo "           服务日志"
     echo "=========================================="
     
-    echo "🔍 后端错误日志 (最新10行):"
+    echo "后端错误日志 最新10行:"
     if [ -f "/var/log/point-rewards-backend-error.log" ]; then
         tail -10 /var/log/point-rewards-backend-error.log
     else
@@ -410,7 +410,7 @@ show_logs() {
     fi
     
     echo ""
-    echo "🔍 Nginx错误日志 (最新10行):"
+    echo "Nginx错误日志 最新10行:"
     if [ -f "/var/log/nginx/error.log" ]; then
         tail -10 /var/log/nginx/error.log
     else
@@ -433,33 +433,33 @@ test_access() {
     MOBILE_DOMAIN="points.eternalmoon.com.cn"
     ADMIN_DOMAIN="dashboard.eternalmoon.com.cn"
     
-    echo "🌐 测试域名访问:"
+    echo "测试域名访问:"
     
     # 测试HTTP
     echo "  HTTP 测试:"
     http_mobile=$(curl -s -o /dev/null -w "%{http_code}" "http://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
     http_admin=$(curl -s -o /dev/null -w "%{http_code}" "http://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
     
-    echo "    移动端 (http://$MOBILE_DOMAIN): $http_mobile"
-    echo "    管理后台 (http://$ADMIN_DOMAIN): $http_admin"
+    echo "    移动端 http://$MOBILE_DOMAIN: $http_mobile"
+    echo "    管理后台 http://$ADMIN_DOMAIN: $http_admin"
     
     # 测试HTTPS
     echo "  HTTPS 测试:"
     https_mobile=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
     https_admin=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
     
-    echo "    移动端 (https://$MOBILE_DOMAIN): $https_mobile"
-    echo "    管理后台 (https://$ADMIN_DOMAIN): $https_admin"
+    echo "    移动端 https://$MOBILE_DOMAIN: $https_mobile"
+    echo "    管理后台 https://$ADMIN_DOMAIN: $https_admin"
     
     # 测试API
     echo "  API 测试:"
     api_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000" 2>/dev/null || echo "000")
-    echo "    后端API (http://localhost:5000): $api_code"
+    echo "    后端API http://localhost:5000: $api_code"
     
     echo ""
     echo "📋 状态码说明:"
     echo "  200: 正常"
-    echo "  301/302: 重定向 (通常HTTP->HTTPS)"
+    echo "  301/302: 重定向 通常HTTP到HTTPS"
     echo "  404: 页面未找到"
     echo "  502/503: 服务错误"
     echo "  000: 连接失败"
@@ -527,7 +527,7 @@ show_info() {
     MOBILE_DOMAIN="points.eternalmoon.com.cn"
     ADMIN_DOMAIN="dashboard.eternalmoon.com.cn"
     
-    echo "🌐 访问地址:"
+    echo "访问地址:"
     echo "  移动端: https://$MOBILE_DOMAIN"
     echo "  管理后台: https://$ADMIN_DOMAIN"
     echo ""
@@ -537,13 +537,13 @@ show_info() {
     echo "  日志目录: /var/log/"
     echo "  备份目录: /opt/backups"
     echo ""
-    echo "🔧 管理命令:"
+    echo "管理命令:"
     echo "  查看服务: sudo supervisorctl status"
     echo "  重启后端: sudo supervisorctl restart point-rewards-backend"
     echo "  重启Nginx: sudo systemctl restart nginx"
     echo "  查看日志: sudo tail -f /var/log/point-rewards-backend-error.log"
     echo ""
-    echo "🗃️ 数据库:"
+    echo "数据库:"
     if [ -f "/opt/point-rewards/point-rewards-backend/app.db" ]; then
         echo "  ✓ 数据库文件存在"
         ls -la /opt/point-rewards/point-rewards-backend/app.db
