@@ -28,9 +28,9 @@
 - [ ] 备份原始项目文件
 - [ ] 上传项目文件到服务器或准备 Git 仓库
 
-## 自动部署使用
+## 统一管理工具部署 (推荐)
 
-### 快速部署 (推荐)
+### 快速部署 (使用 manage.sh)
 ```bash
 # 1. 上传项目文件到服务器
 scp -r point-rewards-hub-main/ user@your-server:/tmp/
@@ -41,15 +41,31 @@ ssh user@your-server
 # 3. 切换到项目目录
 cd /tmp/point-rewards-hub-main
 
-# 4. 给脚本执行权限
-chmod +x deploy.sh
+# 4. 运行统一管理工具部署
+sudo bash manage.sh deploy
 
-# 5. 运行自动部署脚本（无需参数，域名已预配置）
-sudo bash deploy.sh
+# 5. 创建管理员账户
+sudo bash manage.sh create-admin
+```
+
+### 部署验证 (使用 manage.sh)
+使用统一管理工具进行验证：
+```bash
+# 查看服务状态
+bash manage.sh status
+
+# 测试网站访问
+bash manage.sh test
+
+# 查看部署信息
+bash manage.sh info
+
+# 运行完整诊断
+bash manage.sh troubleshoot
 ```
 
 ### 部署后自动检查
-脚本会自动检查以下项目：
+manage.sh 会自动检查以下项目：
 - [ ] 系统包更新完成
 - [ ] 必需软件安装完成
 - [ ] Python 虚拟环境创建成功
@@ -61,18 +77,46 @@ sudo bash deploy.sh
 - [ ] 端口监听正常
 - [ ] HTTP/HTTPS 访问测试通过
 
-## 手动部署检查 (如不使用自动脚本)
+## manage.sh 命令参考
+
+### 部署命令
+```bash
+sudo bash manage.sh deploy          # 标准部署
+sudo bash manage.sh deploy-robust   # 增强部署（生产环境推荐）
+sudo bash manage.sh cleanup         # 完整清理
+```
+
+### 维护命令
+```bash
+sudo bash manage.sh init-db         # 初始化数据库
+sudo bash manage.sh fix-db          # 修复数据库问题（推荐）
+sudo bash manage.sh create-admin    # 创建管理员账户
+sudo bash manage.sh backup          # 备份数据库
+sudo bash manage.sh restart         # 重启服务
+```
+
+### 诊断命令
+```bash
+bash manage.sh status               # 查看服务状态
+bash manage.sh logs                 # 查看服务日志
+bash manage.sh test                 # 测试网站访问
+bash manage.sh troubleshoot         # 运行故障排查
+bash manage.sh info                 # 显示部署信息
+bash manage.sh view-data summary    # 查看数据汇总
+```
+
+## 手动部署检查 (备选方案)
 
 ### 后端部署检查
-- [ ] Python 3.8+ 已安装
+- [ ] Python 3.8+ 已安装 (manage.sh 会自动检测)
 - [ ] 虚拟环境创建成功: `/opt/point-rewards/point-rewards-backend/venv`
 - [ ] requirements.txt 依赖安装完成
 - [ ] .env 环境配置文件已创建
-- [ ] 数据库初始化完成
-- [ ] 管理员账户已创建
+- [ ] 数据库初始化完成 (`sudo bash manage.sh fix-db`)
+- [ ] 管理员账户已创建 (`sudo bash manage.sh create-admin`)
 - [ ] Supervisor 配置文件已创建: `/etc/supervisor/conf.d/point-rewards-backend.conf`
-- [ ] 后端服务启动成功: `supervisorctl status point-rewards-backend`
-- [ ] 后端服务监听 5000 端口: `netstat -tlnp | grep 5000`
+- [ ] 后端服务启动成功: `bash manage.sh status`
+- [ ] 后端服务监听 5000 端口: `bash manage.sh status`
 
 ### 前端部署检查
 - [ ] Node.js 18+ 和 npm 已安装
@@ -102,11 +146,18 @@ sudo bash deploy.sh
 - [ ] 防火墙配置完成 (端口 22, 80, 443 开放)
 - [ ] Nginx 服务自启动已启用: `systemctl is-enabled nginx`
 - [ ] Supervisor 服务自启动已启用: `systemctl is-enabled supervisor`
-- [ ] 备份脚本已创建并添加到 crontab
+- [ ] 备份脚本已创建: `bash manage.sh backup`
 
 ## 部署后验证 ✅
 
 ### 基本功能测试
+使用 manage.sh 进行测试：
+```bash
+# 自动测试所有网站访问
+bash manage.sh test
+```
+
+手动测试：
 - [ ] 移动端首页可以访问: `https://points.eternalmoon.com.cn`
 - [ ] 管理后台可以访问: `https://dashboard.eternalmoon.com.cn`
 - [ ] API 健康检查: 
@@ -148,7 +199,42 @@ sudo bash deploy.sh
 
 ## 常见问题排查
 
-### 后端服务无法启动
+### 使用 manage.sh 排查 (推荐)
+```bash
+# 运行完整诊断
+bash manage.sh troubleshoot
+
+# 查看服务状态
+bash manage.sh status
+
+# 查看错误日志
+bash manage.sh logs
+
+# 测试网站访问
+bash manage.sh test
+```
+
+### 数据库问题
+```bash
+# 一键修复数据库和管理员账户
+sudo bash manage.sh fix-db
+
+# 查看数据库数据
+bash manage.sh view-data summary
+```
+
+### 服务启动失败
+```bash
+# 重启所有服务
+sudo bash manage.sh restart
+
+# 查看详细日志
+bash manage.sh logs
+```
+
+### 手动排查 (备选方案)
+
+#### 后端服务无法启动
 ```bash
 # 查看 supervisor 状态
 sudo supervisorctl status
@@ -162,7 +248,7 @@ source venv/bin/activate
 python run.py
 ```
 
-### 前端页面无法访问
+#### 前端页面无法访问
 ```bash
 # 检查 Nginx 状态
 sudo systemctl status nginx
@@ -174,7 +260,7 @@ sudo nginx -t
 sudo tail -f /var/log/nginx/error.log
 ```
 
-### SSL 证书问题
+#### SSL 证书问题
 ```bash
 # 检查证书状态
 sudo certbot certificates
@@ -186,32 +272,44 @@ sudo certbot renew --dry-run
 ls -la /etc/letsencrypt/live/yourdomain.com/
 ```
 
-### API 请求失败
-```bash
-# 测试后端直接访问
-curl http://localhost:5000/api/health
-
-# 测试 Nginx 代理
-curl https://yourdomain.com/api/health
-
-# 检查防火墙
-sudo ufw status  # Ubuntu
-sudo firewall-cmd --list-all  # CentOS
-```
-
 ## 维护检查清单 (定期执行)
 
-### 每日检查
+### 每日检查 (使用 manage.sh)
+```bash
+# 推荐每日执行的命令
+bash manage.sh status        # 检查服务状态
+bash manage.sh test          # 测试网站访问
+```
+
+检查项目：
 - [ ] 服务状态正常
 - [ ] 磁盘空间充足
 - [ ] 错误日志无异常
 
 ### 每周检查
+```bash
+# 查看详细日志
+bash manage.sh logs
+
+# 备份数据库
+sudo bash manage.sh backup
+```
+
+检查项目：
 - [ ] 系统更新检查
 - [ ] 备份文件完整性检查
 - [ ] 性能指标监控
 
 ### 每月检查
+```bash
+# 查看数据库数据统计
+bash manage.sh view-data summary
+
+# 运行完整诊断
+bash manage.sh troubleshoot
+```
+
+检查项目：
 - [ ] SSL 证书有效期检查
 - [ ] 安全更新应用
 - [ ] 日志清理和轮转
@@ -219,29 +317,69 @@ sudo firewall-cmd --list-all  # CentOS
 
 ## 应急处理
 
-### 服务器宕机
+### 服务器宕机 (使用 manage.sh)
+```bash
+# 1. 运行状态检查
+bash manage.sh status
+
+# 2. 重启所有服务
+sudo bash manage.sh restart
+
+# 3. 查看错误日志
+bash manage.sh logs
+
+# 4. 运行完整诊断
+bash manage.sh troubleshoot
+```
+
+### 数据库问题
+```bash
+# 1. 备份当前数据库
+sudo bash manage.sh backup
+
+# 2. 修复数据库
+sudo bash manage.sh fix-db
+
+# 3. 验证数据完整性
+bash manage.sh view-data summary
+```
+
+### 完整重新部署
+```bash
+# 如果问题严重，完整重新部署
+sudo bash manage.sh cleanup
+sudo bash manage.sh deploy
+sudo bash manage.sh create-admin
+```
+
+### 传统应急处理步骤
+
+#### 服务器宕机
 1. 检查服务器状态和网络连接
-2. 重启相关服务
-3. 查看系统日志确定原因
+2. 使用 `sudo bash manage.sh restart` 重启相关服务
+3. 使用 `bash manage.sh logs` 查看系统日志确定原因
 4. 必要时恢复备份数据
 
-### 数据丢失
+#### 数据丢失
 1. 停止所有服务避免进一步损坏
 2. 从最近备份恢复数据
-3. 验证数据完整性
-4. 重启服务并测试功能
+3. 使用 `bash manage.sh view-data summary` 验证数据完整性
+4. 使用 `sudo bash manage.sh restart` 重启服务并测试功能
 
-### 安全事件
+#### 安全事件
 1. 立即隔离受影响系统
-2. 分析日志确定攻击向量
+2. 使用 `bash manage.sh logs` 分析日志确定攻击向量
 3. 修复安全漏洞
-4. 更新密码和密钥
+4. 使用 `sudo bash manage.sh fix-db` 更新管理员密码
 5. 监控异常活动
 
 ---
 
 **备注**: 
+- **推荐使用 manage.sh 统一管理工具**进行所有部署和维护操作
 - 请根据实际部署情况调整检查项目
-- 建议建立监控告警系统
-- 定期练习应急恢复流程
+- 建议建立监控告警系统，配合 `bash manage.sh status` 定期检查
+- 定期练习应急恢复流程，使用 `sudo bash manage.sh cleanup && sudo bash manage.sh deploy`
 - 保持部署文档的及时更新
+
+**重要提醒**: 本清单已更新为使用 manage.sh 统一管理工具，确保与最新脚本功能同步。

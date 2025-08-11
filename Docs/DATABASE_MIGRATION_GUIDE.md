@@ -4,12 +4,10 @@
 
 ## 目录
 1. [数据库迁移概述](#数据库迁移概述)
-2. [准备工作](#准备工作)
-3. [创建迁移文件](#创建迁移文件)
-4. [执行迁移](#执行迁移)
-5. [回滚操作](#回滚操作)
-6. [常见场景示例](#常见场景示例)
-7. [故障处理](#故障处理)
+2. [使用 manage.sh 进行数据库管理](#使用-managesh-进行数据库管理)
+3. [手动迁移操作](#手动迁移操作)
+4. [常见场景示例](#常见场景示例)
+5. [故障处理](#故障处理)
 
 ## 数据库迁移概述
 
@@ -17,13 +15,52 @@
 
 ### 当前环境
 - 数据库: SQLite
-- ORM: SQLAlchemy
+- ORM: SQLAlchemy 
 - 迁移工具: Flask-Migrate
 - 迁移文件位置: `/opt/point-rewards/point-rewards-backend/migrations/versions/`
+- 统一管理工具: manage.sh (推荐)
 
-## 准备工作
+## 使用 manage.sh 进行数据库管理
 
-### 1. 备份数据库
+### 快速数据库操作 (推荐)
+```bash
+# 查看数据库状态和数据
+bash manage.sh view-data summary        # 数据汇总
+bash manage.sh view-data users          # 用户表
+bash manage.sh view-data prizes         # 奖品表
+
+# 数据库维护
+sudo bash manage.sh backup              # 备份数据库
+sudo bash manage.sh fix-db              # 修复数据库问题
+sudo bash manage.sh init-db             # 初始化数据库
+```
+
+### 数据库问题处理流程
+```bash
+# 1. 检查当前状态
+bash manage.sh view-data summary
+
+# 2. 备份数据库
+sudo bash manage.sh backup
+
+# 3. 修复数据库问题
+sudo bash manage.sh fix-db
+
+# 4. 验证修复结果
+bash manage.sh view-data summary
+```
+
+## 手动迁移操作
+
+### 准备工作
+
+#### 1. 使用 manage.sh 备份数据库 (推荐)
+```bash
+# 自动备份数据库
+sudo bash manage.sh backup
+```
+
+#### 2. 手动备份 (备选方案)
 ```bash
 # 进入后端目录
 cd /opt/point-rewards/point-rewards-backend
@@ -37,13 +74,13 @@ echo "数据库已备份至: $BACKUP_FILE"
 cp app.db /opt/backups/app_pre_migration_$(date +%Y%m%d_%H%M%S).db
 ```
 
-### 2. 激活虚拟环境
+#### 3. 激活虚拟环境
 ```bash
 cd /opt/point-rewards/point-rewards-backend
 source venv/bin/activate
 ```
 
-### 3. 检查当前数据库状态
+#### 4. 检查当前数据库状态
 ```bash
 # 查看当前迁移版本
 flask db current
@@ -365,4 +402,9 @@ curl -f http://localhost:5000/api/health || echo "服务异常"
 
 ---
 
-**注意：** 任何数据库变更都有风险，请严格按照此指南操作，并在生产环境执行前充分测试！
+**重要提醒**: 
+- **优先使用 `manage.sh` 统一管理工具**进行数据库操作，它集成了备份、修复、验证等功能
+- 任何数据库变更都有风险，请严格按照此指南操作
+- `sudo bash manage.sh fix-db` 是最安全的数据库修复方式
+- 遇到问题时，首先运行 `bash manage.sh troubleshoot` 进行诊断
+- 在生产环境执行前，建议先备份: `sudo bash manage.sh backup`
