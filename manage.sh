@@ -28,6 +28,53 @@ log_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 检查命令是否可用
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# 检查Python环境
+check_python() {
+    local python_cmd=""
+    if command_exists python3; then
+        python_cmd="python3"
+    elif command_exists python; then
+        python_cmd="python"
+    else
+        log_error "未找到Python解释器"
+        return 1
+    fi
+    echo "$python_cmd"
+}
+
+# 检查网络工具
+check_network_tool() {
+    if command_exists ss; then
+        echo "ss"
+    elif command_exists netstat; then
+        echo "netstat"
+    else
+        log_warning "未找到网络监听检查工具 (ss/netstat)"
+        return 1
+    fi
+}
+
+# 安全的端口检查
+safe_port_check() {
+    local port="$1"
+    local tool=$(check_network_tool 2>/dev/null || echo "")
+    
+    if [ -n "$tool" ]; then
+        if [ "$tool" = "ss" ]; then
+            ss -tlnp 2>/dev/null | grep ":$port " >/dev/null 2>&1
+        else
+            netstat -tlnp 2>/dev/null | grep ":$port " >/dev/null 2>&1
+        fi
+    else
+        return 1
+    fi
+}
+
 # 显示帮助信息
 show_help() {
     echo "=========================================="
@@ -138,6 +185,13 @@ create_admin() {
         exit 1
     fi
     
+    # 检查Python环境
+    local python_cmd=$(check_python)
+    if [ $? -ne 0 ]; then
+        log_error "Python环境不可用"
+        exit 1
+    fi
+    
     # 优先使用增强版管理员创建脚本
     admin_scripts=("utils/create_admin_enhanced.py" "utils/create_admin.py" "create_admin.py" "create_admin_simple.py")
     admin_script=""
@@ -203,7 +257,7 @@ EOF
     source venv/bin/activate
     
     # 执行管理员创建脚本
-    if python "$admin_script"; then
+    if $python_cmd "$admin_script"; then
         log_success "管理员账户处理完成"
     else
         log_error "管理员账户创建失败"
@@ -266,13 +320,20 @@ fix_database() {
         log_success "数据库已备份为: $backup_name"
     fi
     
+    # 检查Python环境
+    local python_cmd=$(check_python)
+    if [ $? -ne 0 ]; then
+        log_error "Python环境不可用"
+        exit 1
+    fi
+    
     # 设置环境变量
     export PYTHONPATH="/opt/point-rewards/point-rewards-backend:$PYTHONPATH"
     
     source venv/bin/activate
     
     # 强制重新创建数据库表
-    python << 'EOF'
+    $python_cmd << 'EOF'
 from app import create_app, db
 from app.models import User, Prize, Redemption
 
@@ -344,19 +405,19 @@ restart_services() {
     log_info "重启所有服务..."
     
     # 重启后端服务
-    if supervisorctl status point-rewards-backend >/dev/null 2>&1; then
+    if command_exists supervisorctl && supervisorctl status point-rewards-backend >/dev/null 2>&1; then
         supervisorctl restart point-rewards-backend
         log_success "后端服务已重启"
     else
-        log_warning "后端服务未配置"
+        log_warning "后端服务未配置或supervisorctl不可用"
     fi
     
     # 重启Nginx
-    if systemctl is-active --quiet nginx; then
+    if command_exists systemctl && systemctl is-active --quiet nginx 2>/dev/null; then
         systemctl restart nginx
         log_success "Nginx 已重启"
     else
-        log_warning "Nginx 服务未运行"
+        log_warning "Nginx 服务未运行或systemctl不可用"
     fi
 }
 
@@ -437,24 +498,36 @@ test_access() {
     
     # 测试HTTP
     echo "  HTTP 测试:"
-    http_mobile=$(curl -s -o /dev/null -w "%{http_code}" "http://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
-    http_admin=$(curl -s -o /dev/null -w "%{http_code}" "http://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
-    
-    echo "    移动端 http://$MOBILE_DOMAIN: $http_mobile"
-    echo "    管理后台 http://$ADMIN_DOMAIN: $http_admin"
+    if command_exists curl; then
+        http_mobile=$(curl -s -o /dev/null -w "%{http_code}" "http://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
+        http_admin=$(curl -s -o /dev/null -w "%{http_code}" "http://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
+        
+        echo "    移动端 http://$MOBILE_DOMAIN: $http_mobile"
+        echo "    管理后台 http://$ADMIN_DOMAIN: $http_admin"
+    else
+        echo "    curl命令不可用，跳过HTTP测试"
+    fi
     
     # 测试HTTPS
     echo "  HTTPS 测试:"
-    https_mobile=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
-    https_admin=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
-    
-    echo "    移动端 https://$MOBILE_DOMAIN: $https_mobile"
-    echo "    管理后台 https://$ADMIN_DOMAIN: $https_admin"
+    if command_exists curl; then
+        https_mobile=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$MOBILE_DOMAIN" 2>/dev/null || echo "000")
+        https_admin=$(curl -s -k -o /dev/null -w "%{http_code}" "https://$ADMIN_DOMAIN" 2>/dev/null || echo "000")
+        
+        echo "    移动端 https://$MOBILE_DOMAIN: $https_mobile"
+        echo "    管理后台 https://$ADMIN_DOMAIN: $https_admin"
+    else
+        echo "    curl命令不可用，跳过HTTPS测试"
+    fi
     
     # 测试API
     echo "  API 测试:"
-    api_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000" 2>/dev/null || echo "000")
-    echo "    后端API http://localhost:5000: $api_code"
+    if command_exists curl; then
+        api_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:5000" 2>/dev/null || echo "000")
+        echo "    后端API http://localhost:5000: $api_code"
+    else
+        echo "    curl命令不可用，跳过API测试"
+    fi
     
     echo ""
     echo "📋 状态码说明:"
@@ -493,6 +566,13 @@ view_data() {
         exit 1
     fi
     
+    # 检查Python环境
+    local python_cmd=$(check_python)
+    if [ $? -ne 0 ]; then
+        log_error "Python环境不可用"
+        exit 1
+    fi
+    
     # 检查数据查看脚本
     if [ ! -f "utils/view_data.py" ]; then
         log_error "数据查看脚本不存在"
@@ -503,7 +583,7 @@ view_data() {
     
     if [ -n "$2" ]; then
         # 传递参数给脚本
-        python utils/view_data.py "$2"
+        $python_cmd utils/view_data.py "$2"
     else
         # 显示使用帮助
         echo "数据库查看工具使用方法:"
@@ -512,7 +592,7 @@ view_data() {
         echo "  bash manage.sh view-data redemptions    # 查看兑换记录表"
         echo "  bash manage.sh view-data summary        # 显示数据汇总"
         echo ""
-        python utils/view_data.py
+        $python_cmd utils/view_data.py
     fi
     
     deactivate
