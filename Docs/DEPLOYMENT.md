@@ -337,7 +337,6 @@ sudo bash manage.sh restart
    ```bash
    # 推荐
    sudo bash manage.sh deploy
-   sudo bash manage.sh create-admin
    
    # 避免直接使用底层命令
    ```

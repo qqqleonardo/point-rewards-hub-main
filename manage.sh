@@ -89,6 +89,8 @@ deploy() {
     log_info "开始标准部署..."
     if [ -f "deploy.sh" ]; then
         bash deploy.sh
+        log_info "部署脚本执行完毕，开始初始化数据库和管理员账户..."
+        fix_database
     else
         log_error "部署脚本不存在"
         exit 1

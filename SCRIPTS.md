@@ -63,8 +63,8 @@ point-rewards-hub-main/
 # 1. 配置DNS解析
 # 2. 一键部署
 sudo bash manage.sh deploy
-# 3. 创建管理员
-sudo bash manage.sh create-admin
+
+# 部署命令将自动创建数据库和管理员账户。
 ```
 
 ### 日常维护

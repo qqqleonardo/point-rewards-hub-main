@@ -23,8 +23,8 @@ cd point-rewards-hub-main
 # 3. 一键部署（自动处理所有配置）
 sudo bash manage.sh deploy
 
-# 4. 创建管理员账户
-sudo bash manage.sh create-admin
+# 部署命令执行完毕后，将自动完成数据库初始化并创建默认管理员账户。
+# 请留意脚本最后输出的管理员登录信息。
 ```
 
 **默认管理员信息**:
