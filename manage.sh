@@ -101,6 +101,8 @@ deploy_robust() {
     log_info "开始增强部署..."
     if [ -f "deploy-robust.sh" ]; then
         bash deploy-robust.sh
+        log_info "增强部署脚本执行完毕，开始初始化数据库和管理员账户..."
+        fix_database
     else
         log_error "增强部署脚本不存在"
         exit 1
